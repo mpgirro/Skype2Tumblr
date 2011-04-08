@@ -4,31 +4,23 @@ import sys
 
 
 chats_to_follow = ("The High Council of Disposia")
-connected_to_skype = False
 
 def attachment_status_change(status):
-	global connected_to_skype
 
 	print "API attachment status changed to: " + client.Convert.AttachmentStatusToText(status)
 	if status == sky.apiAttachAvailable:
-		connected_to_skype = False
 		client.Attach();
 	elif status == sky.apiAttachSuccess:
 		print "successfully connected to skype"
-		connected_to_skype = True
 	
 	elif status == sky.apiAttachUnknown:
 		print "*************** unknown api attachment status *****************" 
-		connected_to_skype = False
 	elif status == sky.apiAttachPendingAuthorization:
 		print "api authorization pending, please authorize this script in skype to listen to incoming messages"
-		connected_to_skype = False
 	elif status == sky.apiAttachRefused:
 		print "api attachment refused, please authorize this script in skype to listen to incoming messages"
-		connected_to_skype = False
 	elif status == sky.apiAttachNotAvailable:
 		print "no api hook available"
-		connected_to_skype = False
 			
 def message_status_change(message, status):
 	global chats_to_follow
@@ -46,9 +38,6 @@ client.OnMessageStatus = message_status_change;					# set event handler for mess
 
 print "connecting to skype....."
 client.Attach()									# connect to api hook
-	
-while not connected_to_skype:
-	time.sleep(1)
 
 while True:
 	time.sleep(1)
