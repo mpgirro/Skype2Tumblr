@@ -42,11 +42,10 @@ class SkypeListener(object):
 
 	def parse_message(self, message):
 		msg = message.Body							# get the text of the message
-		for k, v in self.key_expressions.iteritems():
-			m = re.search(str(k), msg)						# look for each of the given regular expressions in the message, if no match is found, m will be None
-			print msg, k, m
+		for k, method in self.key_expressions.iteritems():
+			m = re.search(k, msg)						# look for each of the given regular expressions in the message, if no match is found, m will be None
 			if m:
-				v(msg[m.start():len(msg)].strip())			# get the message body without the prefix and surrounding whitespaces and call the given method	
+				method(msg[m.start():len(msg)].strip())			# get the message body without the prefix and surrounding whitespaces and call the given method	
 			
 
 def post_on_tumblr(message):
@@ -58,7 +57,7 @@ if __name__ == "__main__":
 
 
 	chats_to_follow = ("The High Council of Disposia")
-	key_expressions = {"\b<tumb>\b" : post_on_tumblr }
+	key_expressions = {"^<tumb> " : post_on_tumblr }
 	
 
 	print "skype2tumblr started, initializing..."
