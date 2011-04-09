@@ -48,17 +48,30 @@ class SkypeListener(object):
 				method(msg[m.start():len(msg)].strip())			# get the message body without the prefix and surrounding whitespaces and call the given method	
 			
 
-def post_on_tumblr(message):
-	pattern = "http://www.\S{1,}\.[a-zA-Z]{2,3}"
-	print "baem tumblr"
+class Tumblr(object):
+
+	def __init__(self, account = "", password = "", accfilename = None):
+		if accfilename:
+			accfile = open(accfilename, "r")
+			self.account = accfile.readline().strip("\n")
+			self.password = accfile.readline().strip("\n")
+			accfile.close()
+		else:
+			self.account = account
+			self.password = password
+		print self.account, self.password
+
+	def post(self, message):
+		#spattern = "http://www.\S{1,}\.[a-zA-Z]{2,3}"
+		print "baem tumblr"
 
 
 if __name__ == "__main__":
 
+	tumblr = Tumblr(accfilename="tumblr.txt")
 
 	chats_to_follow = ("The High Council of Disposia")
-	key_expressions = {"^<tumb> " : post_on_tumblr }
-	
+	key_expressions = {"^<tumb> " : tumblr.post }
 
 	print "skype2tumblr started, initializing..."
 	listener = SkypeListener(chats_to_follow, key_expressions)	
