@@ -1,6 +1,7 @@
 import Skype4Py as sky
 import time
 import re
+import tumblr
 				
 
 class SkypeListener(object):
@@ -10,14 +11,17 @@ class SkypeListener(object):
 		the given regular expressions specified in key_expresssions (dict), if an expression was matched, the corresponding listener 
 		method given in the dictionary will be called'''
 
-		self.chats_to_follow = chats_to_follow
+		self.chats_to_follow = chats_to_follow						
 		self.message_listeners = message_listeners
 
-		self.hook = sky.Skype()
-		self.hook.OnAttachmentStatus = self.attachment_status_change;
-		self.hook.OnMessageStatus = self.message_status_change;	
+		for listener in self.message_listeners:								# set the post methods for all listeners so they can post something on skype
+			listener.skypepost = self.skypepost
 
-	def attach(self):
+		self.hook = sky.Skype()
+		self.hook.OnAttachmentStatus = self.attachment_status_change;					# set the listener method for attachment status changes
+		self.hook.OnMessageStatus = self.message_status_change;						# set the listener method for message status changes
+
+	def attach(self):		
 		'''attaches the Skype object to the local Skype api hook'''
 		print "connecting to skype....."
 		self.hook.Attach()
@@ -26,15 +30,22 @@ class SkypeListener(object):
 		'''this is the event handler method for the local attachment to skype, it will automatically connect or reconnect to Skype if Skype
 		was shutdown and restarted or if the script was started before Skype'''
 
-		print "API attachment status changed to: " + self.hook.Convert.AttachmentStatusToText(status)
-		if status == sky.apiAttachAvailable:
-			self.hook.Attach();
-		elif status == sky.apiAttachSuccess:
+		print "API attachment status changed to: " + self.hook.Convert.AttachmentStatusToText(status)	
+		if status == sky.apiAttachAvailable:								
+			while True:			
+				try:
+					print "connecting to Skype..."
+					self.hook.Attach();
+					break
+				except ISkypeAPIError:
+					print "connection to Skype timed out, trying again..."
+
+		elif status == sky.apiAttachSuccess:								
 			print "successfully connected to skype"
 	
-		elif status == sky.apiAttachUnknown:
+		elif status == sky.apiAttachUnknown:								
 			print "*************** unknown api attachment status *****************" 
-		elif status == sky.apiAttachPendingAuthorization:
+		elif status == sky.apiAttachPendingAuthorization:						
 			print "api authorization pending, please authorize this script in skype to listen to incoming messages"
 		elif status == sky.apiAttachRefused:
 			print "api attachment refused, please authorize this script in skype to listen to incoming messages"
@@ -44,72 +55,29 @@ class SkypeListener(object):
 
 	def message_status_change(self, message, status):				
 		'''this is the event handler method for messages, if a new message is received or sent, it will call all listening methods'''
-		if str(message.Chat.Topic) in self.chats_to_follow:
-			if status == 'RECEIVED' or status == 'SENT':
-				for listener in self.message_listeners:
-					listener(message)
+		if str(message.Chat.Topic) in self.chats_to_follow:						# if the message was posted in a followed chat
+			if status == 'RECEIVED' or status == 'SENT':						# if the message was sent or received
+				print message.FromDisplayName + ":", message.Body				
+				print "-------------------------------------------------------"
+				for listener in self.message_listeners:						# invoke the messageevent method for all listeners
+					listener.messageevent(message)
+
+	def skypepost(self, chat, message):
+		'''method for posting on skype, all listening classes will receive this method upon object creation and
+		can then post on skype via this method'''
+		if chat:
+			chat.SendMessage(message)
+				
 		
 
-
-class Tumblr(object):
-
-	def __init__(self, account = "", password = "", accfilename = None):
-		'''creates a new Tumblr object with the given accountname and password, to not have to write the login data in here 
-		the additional option to read it from an external file is given'''
-		if accfilename:
-			accfile = open(accfilename, "r")
-			self.account = accfile.readline().strip("\n")
-			self.password = accfile.readline().strip("\n")
-			accfile.close()
-		else:
-			self.account = account
-			self.password = password
-		self.urlpattern = "(http://)?(www\.)?\S+\.[a-zA-Z]{2,3}(/(\S+/?)*)?"
-		self.expression_matches = ("^<tumb> ",)
-
-	def match(self, message):
-		for exp in self.expression_matches:
-			msg = message.Body		
-			m = re.search(exp, msg)		
-			if m:
-				self.post(msg[m.end():len(msg)].strip(), str(message.Sender.DisplayName))	
-		
-
-	def post(self, message, sender):	
-		'''posts the given message to a tumblog specified by account, before doing so it will parse the message for a url.
-		if a url is found, it will send it to tumblr to analyse it and collect relevant data before sending it via the html api'''
-		match = re.search(self.urlpattern, message)
-
-		url = "http://www.tumblr.com/"
-		caption = " ( by " + sender + " via Skype) "
-
-		print match, message
-		if match:
-			if match.start() > 0:
-				caption = message[:match.start()].strip() + caption
-			posturl = message[match.start():match.end()]
-			#tumblrtype = "regular"
-			#title = caption
-			#body = posturl
-		elif len(message) > 0:
-			tumblrtype = "quote"
-			quote = message
-		else:
-			print "could not find anything to post in the given message: " + message
-
-		#if apiurl:
-		#	pass
-			#open api url, else, do nothing and return
-
-	
 
 
 if __name__ == "__main__":
 
-	tumblr = Tumblr(accfilename="tumblr.txt")
+	tumb = tumblr.getinstance()
 
-	chats_to_follow = ("The High Council of Disposia")
-	message_listeners = (tumblr.match,)
+	chats_to_follow = ("The High Council of Disposia",)
+	message_listeners = (tumb,)
 
 	print "skype2tumblr started, initializing..."
 	listener = SkypeListener(chats_to_follow, message_listeners)	
