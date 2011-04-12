@@ -14,9 +14,6 @@ class SkypeListener(object):
 		self.chats_to_follow = chats_to_follow						
 		self.message_listeners = message_listeners
 
-		for listener in self.message_listeners:								# set the post methods for all listeners so they can post something on skype
-			listener.skypepost = self.skypepost
-
 		self.hook = sky.Skype()
 		self.hook.OnAttachmentStatus = self.attachment_status_change;					# set the listener method for attachment status changes
 		self.hook.OnMessageStatus = self.message_status_change;						# set the listener method for message status changes
@@ -62,13 +59,6 @@ class SkypeListener(object):
 				for listener in self.message_listeners:						# invoke the messageevent method for all listeners
 					listener.messageevent(message)
 
-	def skypepost(self, chat, message):
-		'''method for posting on skype, all listening classes will receive this method upon object creation and
-		can then post on skype via this method'''
-		if chat:
-			chat.SendMessage(message)
-				
-		
 
 
 
