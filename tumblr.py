@@ -22,9 +22,17 @@ class Tumblr(object):
 		self.urlpattern = "(http://)?(www\.)?\S+\.[a-zA-Z]{2,3}(/(\S+/?)*)?"			# pattern for recognising a url
 		self.expression_matches = ("^<tumb> ",)							# patterns that should be matched when parsing messages
 		self.string_replacements = { "&#039;" : "\'", "&quot;" : "\"", "&lt;" : "<", "&gt;" : ">" }
+		self.form_comment_elements = { 	"video_form" : "video_post_two",\
+						"chat_form" : "chat_post_two",\
+						"link_form" : "link_post_three",\
+						"quote_form" : "quote_post_one",\
+						"photo_form" : "photo_post_two",\
+						"regular_form" : "regular_post_two" }
 
 
 	def messageevent(self, message):								# event listner method for messages
+		if message.Body == "ping":
+			message.Chat.SendMessage("Skype2Tumblr: pong")
 		for exp in self.expression_matches:							# check if any expression matches
 			msg = message.Body									
 			m = re.search(exp, msg)		
@@ -37,15 +45,6 @@ class Tumblr(object):
 		cookiejar = cookielib.CookieJar()
 		self.urlopener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cookiejar))
 		self.urlopener.open(request)
-		self.urlopener.login_success = True							# custom attribute
-		
-		#for cookie in cookiejar:
-		#	print cookie
-		#	if cookie.name == "logged_in" and cookie.value == "1":
-		#		print "tumblr.login(): successfully logged in"
-		#		self.urlopener.login_success = True
-		#		return True
-		#print "tumblr.login(): error logging in"
 		return True
 		
 
@@ -57,20 +56,16 @@ class Tumblr(object):
 
 		if not self.urlopener:
 			self.login()
-		#if not self.urlopener.login_success or self.login():
-		#	print "tumblr.post(): connection to tumblr could not be established...aborting"
-		#	print self.urlopener.login_success
-		#	return
-
+		
 		match = re.search(self.urlpattern, content)						# check if there is a url in the message
 
 		if match:										# if a url is in the message
 			if match.start() > 0:								# if there is a comment before the url
 				caption = content[:match.start()].strip() + caption			# get the comment
 			posturl = content[match.start():match.end()]					# get the url
-			post_attributes = self.gather_post_data(posturl, caption)
-			post_request = urllib2.Request("http://www.tumblr.com/share", urllib.urlencode(post_attributes))
-			self.urlopener.open(post_request)
+			post_attributes = self.gather_post_data(posturl, caption)			# get the post-data attributes
+			post_request = urllib2.Request("http://www.tumblr.com/share", urllib.urlencode(post_attributes))	
+			self.urlopener.open(post_request)						# open the share page with the post-attributes
 			print "successfully posted on tumblr"
 			message.Chat.SendMessage("successfully posted on tumblr")
 		elif len(content) > 0:									# if there is no url in the message
@@ -82,25 +77,31 @@ class Tumblr(object):
 
 
 	def gather_post_data(self, url, custom_caption):
-		req_string = "http://www.tumblr.com/share?v=3&u=" + urllib.quote(url)
-		request = urllib2.Request(req_string)
-		soup = BeautifulSoup(self.urlopener.open(request))
+		req_string = "http://www.tumblr.com/share?v=3&u=" + urllib.quote(url)					# let tumblr do the categorizing work for us
+		request = urllib2.Request(req_string)	
+		soup = BeautifulSoup(self.urlopener.open(request))							# get the bookmarklet post page
 		
 		input_elements = { }
 		forms = soup.findAll("form")
+		form_type = None
 		for form in forms:
-			if not form.get("style"):
-				inputs = form.findAll("input")
-				for input_el in inputs:
-					input_elements[input_el.get("name")] = input_el.get("value")
+			if not form.get("style"):									# if the form is not hidden by means of a style attribute 
+															# it is the one we want
+				form_type = form.get("id")								# the type of post e.g. "video_form" or "photo_form"
+				inputs = form.findAll("input")								# get all input elements of the form
+				for input_el in inputs:									# add all form input elements and the values to the dict
+					input_elements[input_el.get("name")] = input_el.get("value")			
 
-		caption_element = soup.find("textarea", { "id" : "video_post_two" })
-		caption = caption_element.contents[0]
+		caption_element = soup.find("textarea", { "id" : self.form_comment_elements[form_type] })		# get the textarea element for the particular type of post
+		if len(caption_element.contents) > 0:									# if it has contents
+			caption = caption_element.contents[0] + "\n\n"
+		else:
+			caption = ""											# if not, the caption is just the custom one
 
-		for k, v in self.string_replacements.iteritems():
-			caption = caption.replace(k, v)
-
-		input_elements[caption_element.get("name")] = caption + "\n\n" + custom_caption
+		for k, v in self.string_replacements.iteritems():							# replace all 'forum' encoded strings with normal ones
+			caption = caption.replace(k, v)									# so that html code will be properly displayed on tumblr
+		
+		input_elements[caption_element.get("name")] = caption + custom_caption				 	# add the caption input element to the dict
 
 		return input_elements
 
