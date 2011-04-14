@@ -2,6 +2,8 @@ import Skype4Py as sky
 import time
 import re
 import tumblr
+import pingresponse
+import existencenotifier
 				
 
 class SkypeListener(object):
@@ -26,7 +28,7 @@ class SkypeListener(object):
 		for chat in self.hook.Chats:
 			if str(chat.Topic) in self.chats_to_follow:
 				self.chats.append(chat)
-				chat.last_checked = chat.Messages[0].Timestamp
+				chat.last_id = chat.Messages[0].Id
 
 	def attachment_status_change(self, status):					
 		'''this is the event handler method for the local attachment to skype, it will automatically connect or reconnect to Skype if Skype
@@ -56,15 +58,16 @@ class SkypeListener(object):
 
 
 	def process_messages(self):	
-		for chat in self.chats:			
-			for message in chat.Messages:
-				if message.Timestamp <= chat.last_checked:
+		for chat in self.chats:	
+			msgs = chat.Messages
+			for message in msgs:
+				if message.Id == chat.last_id:
 					break
 				print message.FromDisplayName + ":", message.Body				
 				print "-------------------------------------------------------"
 				for listener in self.message_listeners:						# invoke the messageevent method for all listeners
-					listener.messageevent(message)
-			chat.last_checked = chat.Messages[0].Timestamp
+					listener.notify(message)
+			chat.last_id = msgs[0].Id
 
 
 
@@ -72,9 +75,11 @@ class SkypeListener(object):
 if __name__ == "__main__":
 
 	tumb = tumblr.getinstance()
+	pingre = pingresponse.getinstance()
+	enotify = existencenotifier.getinstance()
 
 	chats_to_follow = ("The High Council of Disposia",)
-	message_listeners = (tumb,)
+	message_listeners = (tumb, pingre, enotify)
 
 	print "skype2tumblr started, initializing..."
 	listener = SkypeListener(chats_to_follow, message_listeners)	
