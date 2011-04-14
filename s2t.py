@@ -16,12 +16,17 @@ class SkypeListener(object):
 
 		self.hook = sky.Skype()
 		self.hook.OnAttachmentStatus = self.attachment_status_change;					# set the listener method for attachment status changes
-		self.hook.OnMessageStatus = self.message_status_change;						# set the listener method for message status changes
+		#self.hook.OnMessageStatus = self.message_status_change;						# set the listener method for message status changes
 
 	def attach(self):		
 		'''attaches the Skype object to the local Skype api hook'''
 		print "connecting to skype....."
 		self.hook.Attach()
+		self.chats = []
+		for chat in self.hook.Chats:
+			if str(chat.Topic) in self.chats_to_follow:
+				self.chats.append(chat)
+				chat.last_checked = chat.Messages[0].Timestamp
 
 	def attachment_status_change(self, status):					
 		'''this is the event handler method for the local attachment to skype, it will automatically connect or reconnect to Skype if Skype
@@ -50,14 +55,16 @@ class SkypeListener(object):
 			print "no api hook available"
 
 
-	def message_status_change(self, message, status):				
-		'''this is the event handler method for messages, if a new message is received or sent, it will call all listening methods'''
-		if str(message.Chat.Topic) in self.chats_to_follow:						# if the message was posted in a followed chat
-			if status == 'RECEIVED' or status == 'SENT':						# if the message was sent or received
+	def process_messages(self):	
+		for chat in self.chats:			
+			for message in chat.Messages:
+				if message.Timestamp <= chat.last_checked:
+					break
 				print message.FromDisplayName + ":", message.Body				
 				print "-------------------------------------------------------"
 				for listener in self.message_listeners:						# invoke the messageevent method for all listeners
 					listener.messageevent(message)
+			chat.last_checked = chat.Messages[0].Timestamp
 
 
 
@@ -74,4 +81,5 @@ if __name__ == "__main__":
 	listener.attach()									# connect to api hook
 
 	while True:										# wait for new message events
-		time.sleep(1)
+		listener.process_messages()
+		time.sleep(10)
