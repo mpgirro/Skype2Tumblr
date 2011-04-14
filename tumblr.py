@@ -5,7 +5,7 @@ import cookielib
 from BeautifulSoup import BeautifulSoup
 
 
-class Tumblr(object):
+class TumblrPoster(object):
 
 	def __init__(self, account = "", password = "", accfilename = None):
 		'''creates a new Tumblr object with the given accountname and password, to not have to write the login data in here 
@@ -30,9 +30,7 @@ class Tumblr(object):
 						"regular_form" : "regular_post_two" }
 
 
-	def messageevent(self, message):								# event listner method for messages
-		if message.Body == "ping":
-			message.Chat.SendMessage("Skype2Tumblr: pong")
+	def notify(self, message):									# event listner method for messages
 		for exp in self.expression_matches:							# check if any expression matches
 			msg = message.Body									
 			m = re.search(exp, msg)		
@@ -67,10 +65,10 @@ class Tumblr(object):
 			post_request = urllib2.Request("http://www.tumblr.com/share", urllib.urlencode(post_attributes))	
 			self.urlopener.open(post_request)						# open the share page with the post-attributes
 			print "successfully posted on tumblr"
-			message.Chat.SendMessage("successfully posted on tumblr")
+			message.Chat.SendMessage("[Tumblr Poster]: post successfully submitted")
 		elif len(content) > 0:									# if there is no url in the message
 			print "could not post quote, feature not yet implemented"
-			message.Chat.SendMessage("could not post quote, feature not yet implemented")
+			message.Chat.SendMessage("[Tumblr Poster]: text only postings not yet implemented, sorry")
 			self.post_via_api(content)
 		else:											# if the content of the message is empty
 			print "tumblr.post(): could not find anything to post in the given message: " + content
@@ -112,4 +110,4 @@ class Tumblr(object):
 
 
 def getinstance():
-	return Tumblr(accfilename="tumblr.txt")
+	return TumblrPoster(accfilename="tumblr.txt")
