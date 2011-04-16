@@ -29,6 +29,12 @@ class TumblrPoster(object):
 						"photo_form" : "photo_post_two",\
 						"regular_form" : "regular_post_two" }
 
+	def init(self, chats):
+		return
+
+	def shutdown(self, chats):
+		return
+
 
 	def notify(self, message):									# event listner method for messages
 		for exp in self.expression_matches:							# check if any expression matches

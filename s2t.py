@@ -29,6 +29,14 @@ class SkypeListener(object):
 			if str(chat.Topic) in self.chats_to_follow:
 				self.chats.append(chat)
 				chat.last_id = chat.Messages[0].Id
+		for listener in self.message_listeners:
+			listener.init(self.chats)
+
+
+	def shutdown(self):
+		for listener in self.message_listeners:
+			listener.shutdown(self.chats)
+
 
 	def attachment_status_change(self, status):					
 		'''this is the event handler method for the local attachment to skype, it will automatically connect or reconnect to Skype if Skype
@@ -82,9 +90,17 @@ if __name__ == "__main__":
 	message_listeners = (tumb, pingre, enotify)
 
 	print "skype2tumblr started, initializing..."
-	listener = SkypeListener(chats_to_follow, message_listeners)	
-	listener.attach()									# connect to api hook
+	skype = SkypeListener(chats_to_follow, message_listeners)	
+	skype.attach()									# connect to api hook
 
-	while True:										# wait for new message events
-		listener.process_messages()
-		time.sleep(10)
+	try:
+		while True:										# wait for new message events
+			skype.process_messages()
+			time.sleep(10)
+
+	except SystemExit as ex:
+		print ex
+	finally:
+		skype.shutdown()
+
+

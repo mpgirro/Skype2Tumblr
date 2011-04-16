@@ -5,6 +5,12 @@ class PingResponse(object):
 	def __init__(self):
 		self.match = ("^ping(!)*$",)
 
+	def init(self, chats):
+		return
+
+	def shutdown(self, chats):
+		return
+
 	def notify(self, message):
 		body = message.Body
 		for exp in self.match:
